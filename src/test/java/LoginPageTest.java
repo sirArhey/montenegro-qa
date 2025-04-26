@@ -1,31 +1,15 @@
-import com.codeborne.selenide.Configuration;
 import org.junit.jupiter.api.*;
 
 import static com.codeborne.selenide.Selenide.*;
 import static com.codeborne.selenide.Condition.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class LoginPageTest {
+public class LoginPageTest extends BaseTest {
 
     private static final String VALID_USERNAME = "admin";
     private static final String VALID_PASSWORD = "admin";
     private static final String INVALID_USERNAME = "wronguser";
     private static final String INVALID_PASSWORD = "wrongpass";
-
-    @BeforeAll
-    static void setUp() {
-        Configuration.browserSize = "1920x1080";
-        // Assuming the HTML file is served locally. Adjust the path accordingly
-        Configuration.baseUrl = "file://" + System.getProperty("user.dir");
-    }
-
-    @BeforeEach
-    void openLoginPage() {
-        open("/application.html");
-        // Clear localStorage before each test
-        localStorage().clear();
-        refresh();
-    }
 
     @Test
     @Order(1)
