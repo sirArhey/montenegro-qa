@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Friendly Login Form 😊</title>
+    <title>Авторизация</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -15,7 +15,7 @@
             background-color: #f0fff4;
         }
 
-        .login-container {
+        .login-container, .success-container {
             background-color: white;
             padding: 2rem;
             border-radius: 8px;
@@ -24,7 +24,7 @@
             max-width: 400px;
         }
 
-        .login-title {
+        .login-title, .success-title {
             color: #16a34a;
             text-align: center;
             margin-bottom: 1.5rem;
@@ -65,7 +65,6 @@
         button {
             width: 100%;
             padding: 0.75rem;
-            background-color: #16a34a;
             color: white;
             border: none;
             border-radius: 4px;
@@ -74,7 +73,11 @@
             transition: all 0.3s ease;
         }
 
-        button:hover {
+        .login-button {
+            background-color: #16a34a;
+        }
+
+        .login-button:hover {
             background-color: #15803d;
             transform: translateY(-2px);
         }
@@ -87,19 +90,94 @@
             text-align: center;
         }
 
-        .welcome-message {
+        .input-error {
+            border-color: #dc2626 !important;
+        }
+
+        .welcome-message, .success-message {
             text-align: center;
             color: #16a34a;
             font-size: 1.1rem;
             margin-bottom: 1.5rem;
         }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-title {
+            color: #dc2626;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .close-button {
+            margin-top: 1rem;
+            padding: 0.5rem 2rem;
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .close-button:hover {
+            background-color: #b91c1c;
+        }
+
+        /* Success page styles */
+        .success-container {
+            text-align: center;
+            display: none;
+        }
+
+        .success-emoji {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .success-message {
+            margin-bottom: 2rem;
+        }
+
+        .logout-button {
+            background-color: #dc2626;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-button:hover {
+            background-color: #b91c1c;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
-    <div class="login-container" data-testid="login-container">
+    <!-- Login Page -->
+    <div class="login-container" id="loginPage" data-testid="login-container">
         <h2 class="login-title" data-testid="login-title">Welcome! 👋</h2>
         <div class="welcome-message" data-testid="welcome-message">We're happy to see you! ✨</div>
-        <form id="loginForm" data-testid="login-form">
+        <form id="loginForm" data-testid="login-form" novalidate>
             <div class="form-group">
                 <label for="username" data-testid="username-label"><span class="emoji-icon">👤</span>Username:</label>
                 <input 
@@ -108,7 +186,6 @@
                     name="username" 
                     data-testid="username-input"
                     placeholder="Enter your username"
-                    required
                 >
             </div>
             <div class="form-group">
@@ -119,35 +196,148 @@
                     name="password" 
                     data-testid="password-input"
                     placeholder="Enter your password"
-                    required
                 >
             </div>
             <div class="error-message" data-testid="error-message"></div>
-            <button type="submit" data-testid="submit-button">Login 🚀</button>
+            <button type="submit" class="login-button" data-testid="submit-button">Войти 🚀</button>
         </form>
     </div>
 
+    <!-- Success Page -->
+    <div class="success-container" id="successPage" data-testid="success-container">
+        <div class="success-emoji">✅</div>
+        <h2 class="success-title" data-testid="success-title">Поздравляем!</h2>
+        <div class="success-message" data-testid="success-message">
+            Вы успешно авторизовались
+        </div>
+        <button onclick="logout()" class="logout-button" data-testid="logout-button">
+            <span>Выйти</span> 🚪
+        </button>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal" data-testid="error-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Ошибка авторизации</h3>
+            <button class="close-button" onclick="closeErrorModal()">Закрыть</button>
+        </div>
+    </div>
+
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // Mock user credentials (in real app this would be handled by backend)
+        const VALID_CREDENTIALS = {
+            username: 'admin',
+            password: 'admin'
+        };
+
+        // Check if user is already logged in
+        function checkAuthState() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const username = localStorage.getItem('username');
+            if (isLoggedIn === 'true' && username) {
+                document.querySelector('.success-message').textContent = 
+                    `Вы успешно авторизовались как ${username}`;
+                showSuccessPage();
+            } else {
+                showLoginPage();
+            }
+        }
+
+        function showErrorModal() {
+            document.getElementById('errorModal').style.display = 'flex';
+        }
+
+        function closeErrorModal() {
+            document.getElementById('errorModal').style.display = 'none';
+        }
+
+        function showError(message, fieldId = null) {
+            const errorMessage = document.querySelector('.error-message');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+
+            // Reset all input borders
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.remove('input-error');
+            });
+
+            // Highlight specific field if provided
+            if (fieldId) {
+                const field = document.getElementById(fieldId);
+                field.classList.add('input-error');
+                field.focus();
+            }
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').style.display = 'block';
+            document.getElementById('successPage').style.display = 'none';
+            // Clear form
+            document.getElementById('loginForm').reset();
+            document.querySelector('.error-message').style.display = 'none';
+            document.querySelectorAll('input').forEach(input => {
+                input.classList.remove('input-error');
+            });
+        }
+
+        function showSuccessPage() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('successPage').style.display = 'block';
+        }
+
+        function login(username) {
+            localStorage.setItem('isLoggedIn', 'true');
+            localStorage.setItem('username', username);
+            document.querySelector('.success-message').textContent = 
+                `Вы успешно авторизовались как ${username}`;
+            showSuccessPage();
+        }
+
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('username');
+            showLoginPage();
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorMessage = document.querySelector('.error-message');
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
             
-            // Simple validation
-            if (!username || !password) {
-                errorMessage.textContent = '❌ Please fill in all fields';
-                errorMessage.style.display = 'block';
+            // Clear previous error message
+            const errorMessage = document.querySelector('.error-message');
+            errorMessage.style.display = 'none';
+            
+            // Specific validation for each field
+            if (!username && !password) {
+                showError('❌ Введите логин и пароль', 'username');
+                return;
+            }
+            if (!username) {
+                showError('❌ Введите логин', 'username');
+                return;
+            }
+            if (!password) {
+                showError('❌ Введите пароль', 'password');
                 return;
             }
 
-            // Here you would typically make an API call to validate credentials
-            // For demo purposes, we'll just show a success message
-            errorMessage.textContent = '✅ Login successful! Welcome back!';
-            errorMessage.style.color = '#16a34a';
-            errorMessage.style.display = 'block';
+            // Check credentials
+            try {
+                if (username === VALID_CREDENTIALS.username && password === VALID_CREDENTIALS.password) {
+                    login(username);
+                } else {
+                    showErrorModal();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showErrorModal();
+            }
         });
+
+        // Check auth state on page load
+        checkAuthState();
     </script>
 </body>
 </html> 
